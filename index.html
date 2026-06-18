@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0EA968" />
+<title>Aligner Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EFF3EF; --surface:#FFFFFF; --ink:#0C1F17; --muted:#67786F;
+    --line:#E5ECE7; --green:#0EA968; --green-deep:#0A7E4F; --mint:#DCF1E5;
+    --amber:#EE9A2E; --amber-soft:#FBEBD4; --red:#E5544B; --red-soft:#FBE2E0;
+    --shadow:0 1px 2px rgba(12,31,23,.05), 0 12px 28px -12px rgba(12,31,23,.18);
+    --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    min-height:100dvh;-webkit-font-smoothing:antialiased;
+    padding:0 0 calc(86px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:0 18px}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-.02em}
+  .num{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .muted{color:var(--muted)}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  /* Top bar */
+  header{padding:max(18px,env(safe-area-inset-top)) 0 6px}
+  .topbar{display:flex;align-items:baseline;justify-content:space-between}
+  .brand{font-family:'Space Grotesk';font-weight:700;font-size:19px}
+  .brand b{color:var(--green)}
+  .datestr{font-size:13px;color:var(--muted);font-weight:500}
+  .cloud{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--green)}
+
+  /* Cards */
+  .card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin:14px 0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .card-h h2{font-size:16px;font-weight:600}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+  /* Today ring */
+  .ringwrap{position:relative;width:236px;height:236px;margin:6px auto 2px}
+  .ringwrap svg{transform:rotate(-90deg)}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  #statePill{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:8px}
+  #statePill.in{background:var(--mint);color:var(--green-deep)}
+  #statePill.out{background:var(--amber-soft);color:#9a5e10}
+  #bigTime{font-size:42px;font-weight:700;line-height:1}
+  #bigLabel{font-size:13px;color:var(--muted);margin-top:6px}
+  .ring-out{transition:stroke-dashoffset .6s ease}
+
+  .toggle{
+    width:100%;border-radius:16px;padding:17px;font-size:16px;font-weight:600;
+    margin-top:14px;transition:transform .08s ease,background .2s;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+  }
+  .toggle:active{transform:scale(.985)}
+  .toggle.in{background:var(--green);color:#fff}
+  .toggle.out{background:var(--amber);color:#fff}
+
+  /* budget bar */
+  .budget{margin-top:16px}
+  .budget-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:7px}
+  .budget-top b{font-size:15px}
+  .bar{height:9px;border-radius:99px;background:var(--line);overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:99px;background:var(--green);transition:width .5s ease,background .3s}
+  .bar.over > i{background:var(--red)}
+
+  /* stat trio */
+  .trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border-radius:16px;overflow:hidden;margin-top:16px}
+  .trio div{background:var(--surface);padding:14px 8px;text-align:center;display:flex;flex-direction:column;align-items:center}
+  .trio .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .trio .v{font-size:21px;font-weight:700;margin-top:auto;padding-top:8px}
+  .trio .v.green{color:var(--green-deep)}
+
+  /* week dots */
+  .week{display:flex;justify-content:space-between;margin-top:4px}
+  .week .d{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px;color:var(--muted);font-weight:600}
+  .pip{width:26px;height:26px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center}
+  .pip.good{background:var(--green)}
+  .pip.under{background:var(--amber)}
+  .pip.today{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--amber)}
+  .pip svg{width:13px;height:13px}
+
+  .hint{display:flex;gap:9px;align-items:flex-start;background:var(--mint);color:var(--green-deep);
+    border-radius:13px;padding:11px 13px;font-size:13px;line-height:1.4;margin-top:16px;font-weight:500}
+  .hint.warn{background:var(--red-soft);color:#a3322c}
+  .hint svg{flex:none;margin-top:1px}
+
+  /* Calendar */
+  .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .cal-h h2{font-size:17px;font-weight:600}
+  .navbtn{width:38px;height:38px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center}
+  .navbtn:active{background:var(--line)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .dow{text-align:center;font-size:11px;color:var(--muted);font-weight:600;padding-bottom:4px}
+  .cell{aspect-ratio:1;border-radius:13px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:600;position:relative;background:var(--bg);color:var(--muted)}
+  .cell.empty{background:transparent}
+  .cell.good{background:var(--green);color:#fff}
+  .cell.under{background:var(--amber);color:#fff}
+  .cell.future{color:#c2cdc7;background:transparent}
+  .cell.today{box-shadow:inset 0 0 0 2px var(--amber)}
+  .cell.sel{transform:scale(1.06)}
+  .legend{display:flex;gap:16px;margin-top:16px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:4px}
+  #dayDetail{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;font-size:14px;display:none}
+  #dayDetail.show{display:block}
+  .dd-row{display:flex;justify-content:space-between;padding:6px 0}
+  .linkbtn{color:var(--green-deep);font-weight:600;font-size:13px}
+
+  /* Trays */
+  .tray-prog{margin:10px 0}
+  .tray-prog .lab{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .tray-prog .lab b{color:var(--ink)}
+  .switch-when{color:var(--green-deep);font-weight:600;font-size:15px;margin:14px 0 2px}
+  .btn-primary{width:100%;background:var(--green);color:#fff;border-radius:14px;padding:15px;font-weight:600;font-size:15px;display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px}
+  .btn-ghost{width:100%;background:var(--surface);color:var(--green-deep);border:1px solid var(--line);border-radius:14px;padding:14px;font-weight:600;font-size:14px;margin-top:10px}
+  .btn-primary:active,.btn-ghost:active{transform:scale(.99)}
+  .traylist{margin-top:6px}
+  .trayrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:14px}
+  .trayrow:first-child{border-top:none}
+  .traynum{width:30px;height:30px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .trayrow.done .traynum{background:var(--mint);color:var(--green-deep)}
+  .trayrow.cur .traynum{background:var(--green);color:#fff}
+  .trayrow .meta{margin-left:auto;text-align:right;color:var(--muted);font-size:12px}
+
+  /* Settings */
+  .field{margin:14px 0}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+  .field .sub{font-weight:400;color:var(--muted);font-size:12px}
+  .field input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:var(--bg)}
+  .field input[type="date"]{text-align:left;-webkit-appearance:none;appearance:none}
+  .field input[type="date"]::-webkit-date-and-time-value{text-align:left}
+  .field input:focus{outline:none;border-color:var(--green);background:#fff}
+  .danger{color:var(--red);font-weight:600;font-size:14px;background:var(--red-soft);border-radius:12px;padding:13px;width:100%;margin-top:8px}
+
+  /* Tabs */
+  nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:20}
+  .tabs{max-width:480px;margin:0 auto;display:flex;justify-content:space-around}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--muted);padding:4px 14px}
+  .tab svg{width:23px;height:23px;stroke:var(--muted)}
+  .tab.active{color:var(--green-deep)}
+  .tab.active svg{stroke:var(--green-deep)}
+
+  .page{display:none;animation:fade .25s ease}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* Login overlay */
+  .login-screen{position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,#0EA968,#0A7E4F);
+    display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-card{background:#fff;border-radius:24px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4);
+    padding:30px 24px;width:100%;max-width:360px;text-align:center}
+  .login-brand{font-family:'Space Grotesk';font-weight:700;font-size:26px;color:var(--ink)}
+  .login-brand b{color:var(--green)}
+  .login-sub{color:var(--muted);font-size:14px;margin:8px 0 22px}
+  .login-card input{width:100%;padding:14px 15px;border:1px solid var(--line);border-radius:13px;
+    font-size:16px;font-family:inherit;background:var(--bg);margin-bottom:11px}
+  .login-card input:focus{outline:none;border-color:var(--green);background:#fff}
+  .login-card button{width:100%;background:var(--green);color:#fff;border-radius:13px;padding:15px;
+    font-weight:600;font-size:16px;margin-top:6px}
+  .login-card button:disabled{opacity:.6}
+  .login-err{color:var(--red);font-size:13px;font-weight:500;margin:12px 0 0;min-height:16px}
+</style>
+</head>
+<body>
+<div class="login-screen" id="login">
+  <div class="login-card">
+    <div class="login-brand">Clear<b>Wear</b></div>
+    <p class="login-sub">Log in to sync your aligner data across devices.</p>
+    <input id="loginEmail" type="email" placeholder="Email" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="loginBtn">Log in</button>
+    <p id="loginErr" class="login-err"></p>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <div class="topbar">
+      <div class="brand">Clear<b>Wear</b></div>
+      <div style="text-align:right">
+        <div class="datestr" id="todayDate">—</div>
+        <div class="cloud"><span class="dot" id="cloudDot"></span><span id="cloudTxt">local</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- TODAY -->
+  <section class="page active" id="page-today">
+    <div class="card">
+      <div class="ringwrap">
+        <svg width="236" height="236" viewBox="0 0 236 236">
+          <circle cx="118" cy="118" r="104" fill="none" stroke="var(--line)" stroke-width="16"/>
+          <circle id="ringWear" cx="118" cy="118" r="104" fill="none" stroke="var(--green)" stroke-width="16"
+            stroke-linecap="round" class="ring-out" stroke-dasharray="653.45" stroke-dashoffset="653.45"/>
+        </svg>
+        <div class="ring-center">
+          <span id="statePill" class="in">Aligner in</span>
+          <span id="bigTime" class="num">00:00:00</span>
+          <span id="bigLabel">worn today</span>
+        </div>
+      </div>
+
+      <button class="toggle in" id="toggleBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <span id="toggleLabel">I took my aligner out</span>
+      </button>
+
+      <div class="budget">
+        <div class="budget-top">
+          <span class="muted">Out-of-mouth budget</span>
+          <b class="num" id="budgetLeft">2h 00m left</b>
+        </div>
+        <div class="bar" id="budgetBar"><i style="width:0%"></i></div>
+      </div>
+
+      <div class="trio">
+        <div><div class="k">Sessions</div><div class="v num" id="tSessions">0</div></div>
+        <div><div class="k">Time out</div><div class="v num" id="tOut">0m</div></div>
+        <div><div class="k">Streak</div><div class="v num green" id="tStreak">0</div></div>
+      </div>
+
+      <div class="hint" id="todayHint">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+        <span id="todayHintTxt">Keep it in. You're on track for your 22h goal.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">This week</div>
+      <div class="week" id="weekDots" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section class="page" id="page-cal">
+    <div class="card">
+      <div class="cal-h">
+        <button class="navbtn" id="prevMonth">‹</button>
+        <h2 id="monthLabel">—</h2>
+        <button class="navbtn" id="nextMonth">›</button>
+      </div>
+      <div class="grid" id="calHead"></div>
+      <div class="grid" id="calGrid" style="margin-top:6px"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--green)"></i>Goal met</span>
+        <span><i class="sw" style="background:var(--amber)"></i>Under goal</span>
+        <span><i class="sw" style="background:var(--bg)"></i>No data</span>
+      </div>
+      <div id="dayDetail"></div>
+    </div>
+  </section>
+
+  <!-- TRAYS -->
+  <section class="page" id="page-trays">
+    <div class="card" id="curTrayCard">
+      <div class="eyebrow">Current tray</div>
+      <h2 style="font-size:30px;margin:6px 0 14px" id="curTrayTitle">Tray 1</h2>
+
+      <div class="tray-prog">
+        <div class="lab"><span>Treatment progress</span><b id="overallPct">0%</b></div>
+        <div class="bar"><i id="overallBar" style="width:0%;background:var(--green)"></i></div>
+      </div>
+      <div class="tray-prog">
+        <div class="lab"><span>Days on this tray</span><b id="trayDayTxt">Day 1 of 14</b></div>
+        <div class="bar"><i id="trayBar" style="width:0%;background:var(--green)"></i></div>
+      </div>
+
+      <div class="switch-when" id="switchWhen">Switch on —</div>
+      <div class="muted" id="switchRel" style="font-size:13px">—</div>
+
+      <button class="btn-primary" id="switchNow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>
+        <span id="switchBtnTxt">Switch to Tray 2 now</span>
+      </button>
+      <button class="btn-ghost" id="trayDelay">Not switching yet</button>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Full schedule</div>
+      <div class="traylist" id="trayList" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="page" id="page-set">
+    <div class="card">
+      <div class="eyebrow">Goal & treatment</div>
+      <div class="field">
+        <label>Daily wear goal <span class="sub">hours per day</span></label>
+        <input type="number" id="sGoal" min="1" max="24" step="0.5">
+      </div>
+      <div class="field">
+        <label>Number of trays</label>
+        <input type="number" id="sTrayCount" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>Days per tray <span class="sub">how long you wear each one</span></label>
+        <input type="number" id="sTrayDays" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>Current tray <span class="sub">which tray you're on now</span></label>
+        <input type="number" id="sCurTray" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>This tray started on</label>
+        <input type="date" id="sTrayStart">
+      </div>
+      <button class="btn-primary" id="saveSettings">Save settings</button>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Your data</div>
+      <p class="muted" style="font-size:13px;line-height:1.5;margin:12px 0">
+        Tap any past day on the calendar to fix its time-out if you forgot to log a meal.
+      </p>
+      <button class="btn-ghost" id="exportBtn">Export my data (JSON)</button>
+      <button class="btn-ghost" id="logoutBtn">Log out</button>
+      <button class="danger" id="resetBtn">Erase all data</button>
+    </div>
+  </section>
+</div>
+
+<nav>
+  <div class="tabs">
+    <button class="tab active" data-tab="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today
+    </button>
+    <button class="tab" data-tab="cal">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Calendar
+    </button>
+    <button class="tab" data-tab="trays">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Trays
+    </button>
+    <button class="tab" data-tab="set">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Settings
+    </button>
+  </div>
+</nav>
+
+<!-- ============================================================
+     CONFIG — Firebase config is loaded from an external file
+     (firebase-config.js) that is NOT committed to Git.
+     See firebase-config.example.js for the template.
+     ============================================================ -->
+<script src="firebase-config.js"></script>
+
+<script type="module">
+/* ============================================================
+   2. STATE MODEL
+   - settings: { goalHours, trayCount, trayDays, curTray, trayStart(YYYY-MM-DD) }
+   - openOut:  timestamp(ms) when aligner was taken out, or null
+   - days:     { 'YYYY-MM-DD': { outMs, sessions } }
+   Wear for a day = (elapsed in day) - (out ms that day).
+   ============================================================ */
+const DEFAULTS = { goalHours:22, trayCount:10, trayDays:14, curTray:1, trayStart:isoDate(new Date()) };
+let settings = {...DEFAULTS};
+let openOut = null;
+let days = {};
+let calMonth = startOfMonth(new Date());
+let selectedDay = null;
+
+/* ---------- date helpers (all local time) ---------- */
+function isoDate(d){const z=new Date(d);return z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')+'-'+String(z.getDate()).padStart(2,'0');}
+function startOfDay(d){const z=new Date(d);z.setHours(0,0,0,0);return z;}
+function startOfMonth(d){const z=new Date(d);z.setDate(1);z.setHours(0,0,0,0);return z;}
+function addDays(d,n){const z=new Date(d);z.setDate(z.getDate()+n);return z;}
+function fmtHMS(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),s=ms%60;return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
+function fmtHM(ms){ms=Math.max(0,Math.round(ms/60000));const h=Math.floor(ms/60),m=ms%60;return h?`${h}h ${m}m`:`${m}m`;}
+function goalMs(){return settings.goalHours*3600e3;}
+function budgetMs(){return (24-settings.goalHours)*3600e3;} // allowed out per day
+
+/* Distribute an out-session across the local calendar days it spans */
+function spreadOut(startMs,endMs){
+  const out={};let cur=startMs;
+  while(cur<endMs){
+    const dayEnd=startOfDay(addDays(cur,1)).getTime();
+    const slice=Math.min(endMs,dayEnd)-cur;
+    const k=isoDate(cur);out[k]=(out[k]||0)+slice;cur=dayEnd;
+  }
+  return out;
+}
+function todayKey(){return isoDate(new Date());}
+function elapsedToday(){return Date.now()-startOfDay(new Date()).getTime();}
+
+/* current out ms for a day, including a live-running session */
+function outForDay(key){
+  let v=(days[key]?.outMs)||0;
+  if(openOut){
+    const live=spreadOut(openOut,Date.now());
+    if(live[key]) v+=live[key];
+  }
+  return v;
+}
+function wearForDay(key,isToday){
+  const span=isToday?elapsedToday():24*3600e3;
+  return Math.max(0, span - outForDay(key));
+}
+function dayStatus(key){               // for past days only
+  if(!days[key]) return 'none';
+  return wearForDay(key,false)>=goalMs() ? 'good' : 'under';
+}
+
+/* streak: consecutive days up to (and including today if already met) meeting goal */
+function computeStreak(){
+  let n=0, d=new Date();
+  // today only counts if already met
+  if(wearForDay(todayKey(),true)>=goalMs()) n++;
+  d=addDays(d,-1);
+  for(let i=0;i<400;i++){
+    const k=isoDate(d);
+    if(days[k] && wearForDay(k,false)>=goalMs()){n++;d=addDays(d,-1);}
+    else break;
+  }
+  return n;
+}
+
+/* ============================================================
+   3. BACKEND  (Firestore if configured, else localStorage)
+   ============================================================ */
+let backend, uid='local';
+const LS='clearwear_v1';
+
+function localBackend(){
+  function read(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch{return {}}}
+  function write(o){try{localStorage.setItem(LS,JSON.stringify(o))}catch{}}
+  let mem=read();
+  return {
+    mode:'local',
+    start(cb){
+      settings={...DEFAULTS,...(mem.settings||{})};
+      openOut=mem.openOut??null; days=mem.days||{};
+      cb();
+    },
+    saveSettings(s){settings=s;mem.settings=s;write(mem);render();},
+    saveState(o){openOut=o;mem.openOut=o;write(mem);render();},
+    saveDay(k,outMs,sessions){days[k]={outMs,sessions};mem.days=days;write(mem);render();},
+    wipe(){mem={};write(mem);settings={...DEFAULTS};openOut=null;days={};render();}
+  };
+}
+
+let fb=null, started=false;
+
+async function loadFirebase(){
+  const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+  const authMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+  const dbMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+  const app=initializeApp(firebaseConfig);
+  const auth=authMod.getAuth(app);
+  await authMod.setPersistence(auth, authMod.browserLocalPersistence); // remember login
+  const db=dbMod.getDatabase(app);
+  fb={auth,db,authMod,dbMod};
+  return fb;
+}
+
+function rtdbBackend(uid){
+  const {db,dbMod}=fb;
+  const {ref,set,onValue}=dbMod;
+  const settingsRef=ref(db,`users/${uid}/settings`);
+  const stateRef=ref(db,`users/${uid}/state/openOut`);
+  const daysRef=ref(db,`users/${uid}/days`);
+  return {
+    mode:'cloud',
+    start(cb){
+      onValue(settingsRef,s=>{settings={...DEFAULTS,...(s.val()||{})};cb();});
+      onValue(stateRef,s=>{openOut=s.val()??null;cb();});
+      onValue(daysRef,s=>{days=s.val()||{};cb();});
+    },
+    saveSettings(s){settings=s;set(settingsRef,s);},
+    saveState(o){openOut=o;set(stateRef,o);},
+    saveDay(k,outMs,sessions){days[k]={outMs,sessions};set(ref(db,`users/${uid}/days/${k}`),{outMs,sessions});},
+    async wipe(){await set(ref(db,`users/${uid}`),{settings:{...DEFAULTS}});}
+  };
+}
+
+async function doLogin(email,password){
+  const {auth,authMod}=fb;
+  try{
+    await authMod.signInWithEmailAndPassword(auth,email,password);
+  }catch(e){
+    if(e.code==='auth/invalid-email') throw new Error('That email looks invalid.');
+    if(e.code==='auth/user-not-found' || e.code==='auth/invalid-credential') throw new Error('No account with that email and password.');
+    if(e.code==='auth/wrong-password') throw new Error('Wrong password.');
+    if(e.code==='auth/too-many-requests') throw new Error('Too many attempts. Try again later.');
+    throw new Error('Could not log in. Check your connection and try again.');
+  }
+}
+
+function showLogin(){document.getElementById('login').style.display='flex';}
+function hideLogin(){document.getElementById('login').style.display='none';}
+
+async function boot(){
+  const configured=firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('PASTE');
+  if(!configured){                       // local-only mode, no login needed
+    hideLogin();
+    backend=localBackend();
+    document.getElementById('cloudTxt').textContent='local';
+    backend.start(render); render();
+    return;
+  }
+  try{ await loadFirebase(); }
+  catch(e){ console.warn('Firebase failed, local mode',e); hideLogin(); backend=localBackend(); backend.start(render); render(); return; }
+
+  fb.authMod.onAuthStateChanged(fb.auth, user=>{
+    if(user){
+      hideLogin();
+      if(started) return;                 // already running
+      started=true; uid=user.uid;
+      backend=rtdbBackend(uid);
+      document.getElementById('cloudDot').classList.add('on');
+      document.getElementById('cloudTxt').textContent='synced';
+      backend.start(render); render();
+    }else{
+      showLogin();
+    }
+  });
+
+  const btn=document.getElementById('loginBtn'), err=document.getElementById('loginErr');
+  btn.onclick=async()=>{
+    err.textContent=''; btn.disabled=true; btn.textContent='Logging in…';
+    try{
+      await doLogin(document.getElementById('loginEmail').value.trim(),
+                    document.getElementById('loginPass').value);
+    }catch(e){ err.textContent=e.message||'Login failed.'; }
+    btn.disabled=false; btn.textContent='Log in';
+  };
+  document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')btn.click();});
+}
+
+/* ============================================================
+   4. ACTIONS
+   ============================================================ */
+function toggleWear(){
+  if(openOut){                                   // putting it back IN -> close out-session
+    const spread=spreadOut(openOut,Date.now());
+    for(const k in spread){
+      const prev=days[k]||{outMs:0,sessions:0};
+      backend.saveDay(k, (prev.outMs||0)+spread[k], (prev.sessions||0)+(k===isoDate(openOut)?1:0));
+    }
+    backend.saveState(null);
+  }else{                                          // taking it OUT
+    backend.saveState(Date.now());
+  }
+  render();
+}
+
+function switchTray(advance){
+  const s={...settings};
+  if(advance && s.curTray<s.trayCount) s.curTray++;
+  s.trayStart=todayKey();
+  backend.saveSettings(s);
+}
+
+function editDay(key){
+  const cur=Math.round(((days[key]?.outMs)||0)/60000);
+  const v=prompt(`Minutes the aligner was OUT on ${key}:`, cur);
+  if(v===null) return;
+  const mins=Math.max(0,parseFloat(v)||0);
+  backend.saveDay(key, mins*60000, days[key]?.sessions||1);
+}
+
+/* ============================================================
+   5. RENDER
+   ============================================================ */
+const C=653.45; // 2*pi*104
+
+function render(){
+  document.getElementById('todayDate').textContent =
+    new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  renderToday(); renderWeek(); renderCalendar(); renderTrays(); fillSettings();
+}
+
+function renderToday(){
+  const tk=todayKey();
+  const out=outForDay(tk), wear=wearForDay(tk,true), budget=budgetMs();
+  const pill=document.getElementById('statePill');
+  const big=document.getElementById('bigTime'), bigLab=document.getElementById('bigLabel');
+  const tog=document.getElementById('toggleBtn'), togLab=document.getElementById('toggleLabel');
+
+  if(openOut){
+    pill.className='out';pill.textContent='Aligner out';
+    big.textContent=fmtHMS(Date.now()-openOut);
+    bigLab.textContent='out right now';
+    tog.className='toggle out';togLab.textContent='Put my aligner back in';
+  }else{
+    pill.className='in';pill.textContent='Aligner in';
+    big.textContent=fmtHMS(wear);
+    bigLab.textContent='worn today';
+    tog.className='toggle in';togLab.textContent='I took my aligner out';
+  }
+
+  // wear ring (toward goal)
+  const frac=Math.min(1,wear/goalMs());
+  document.getElementById('ringWear').style.strokeDashoffset = C*(1-frac);
+  document.getElementById('ringWear').style.stroke = openOut?'var(--amber)':'var(--green)';
+
+  // budget bar (out used vs allowed)
+  const used=Math.min(1,out/budget), over=out>budget;
+  const bar=document.getElementById('budgetBar');
+  bar.classList.toggle('over',over);
+  bar.querySelector('i').style.width=(used*100)+'%';
+  document.getElementById('budgetLeft').textContent = over
+    ? `${fmtHM(out-budget)} over` : `${fmtHM(budget-out)} left`;
+
+  document.getElementById('tSessions').textContent=(days[tk]?.sessions||0)+(openOut?1:0);
+  document.getElementById('tOut').textContent=fmtHM(out);
+  document.getElementById('tStreak').textContent=computeStreak();
+
+  const hint=document.getElementById('todayHint'), ht=document.getElementById('todayHintTxt');
+  if(over){hint.className='hint warn';ht.textContent=`Over your out-budget. Even worn the rest of today, you'll fall short of ${settings.goalHours}h. Pop it back in.`;}
+  else if(openOut){hint.className='hint warn';ht.textContent=`Counting your time out — ${fmtHM(budget-out)} of budget left before you miss today's goal.`;}
+  else if(wear>=goalMs()){hint.className='hint';ht.textContent=`Goal met for today. Nicely done — keep it in to bank the streak.`;}
+  else{hint.className='hint';ht.textContent=`On track. ${fmtHM(budget-out)} of out-time left in the tank.`;}
+}
+
+function renderWeek(){
+  const wrap=document.getElementById('weekDots');wrap.innerHTML='';
+  for(let i=6;i>=0;i--){
+    const d=addDays(new Date(),-i), k=isoDate(d), isT=i===0;
+    const st=isT?(wearForDay(k,true)>=goalMs()?'good':(days[k]||openOut?'under':'')):dayStatus(k);
+    const cls=st==='good'?'good':st==='under'?'under':'';
+    const check=st==='good'?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>':'';
+    wrap.insertAdjacentHTML('beforeend',
+      `<div class="d"><div class="pip ${cls} ${isT?'today':''}">${check}</div>${'SMTWTFS'[d.getDay()]}</div>`);
+  }
+}
+
+function renderCalendar(){
+  const head=document.getElementById('calHead');
+  if(!head.children.length) ['S','M','T','W','T','F','S'].forEach(x=>head.insertAdjacentHTML('beforeend',`<div class="dow">${x}</div>`));
+  document.getElementById('monthLabel').textContent=
+    calMonth.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const grid=document.getElementById('calGrid');grid.innerHTML='';
+  const first=startOfMonth(calMonth), pad=first.getDay();
+  const dim=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,0).getDate();
+  for(let i=0;i<pad;i++)grid.insertAdjacentHTML('beforeend','<div class="cell empty"></div>');
+  const tk=todayKey();
+  for(let day=1;day<=dim;day++){
+    const d=new Date(calMonth.getFullYear(),calMonth.getMonth(),day), k=isoDate(d);
+    let cls='cell';
+    if(k>tk) cls+=' future';
+    else if(k===tk) cls+=(wearForDay(k,true)>=goalMs()?' good':(days[k]||openOut?' under':''))+' today';
+    else cls+=' '+ (dayStatus(k)==='good'?'good':dayStatus(k)==='under'?'under':'');
+    if(k===selectedDay) cls+=' sel';
+    grid.insertAdjacentHTML('beforeend',`<button class="${cls}" data-k="${k}">${day}</button>`);
+  }
+  grid.querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>showDay(b.dataset.k));
+}
+
+function showDay(k){
+  selectedDay=k;renderCalendar();
+  const det=document.getElementById('dayDetail');
+  const isT=k===todayKey(), isFuture=k>todayKey();
+  if(isFuture){det.className='';det.classList.remove('show');return;}
+  const wear=wearForDay(k,isT), out=outForDay(k), met=wear>=goalMs();
+  const tracked=!!days[k]||(isT&&(openOut||out>0));
+  det.classList.add('show');
+  det.innerHTML=`
+    <div class="dd-row"><b>${new Date(k+'T00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</b>
+      <span style="color:${met?'var(--green-deep)':'var(--amber)'}">${tracked?(met?'Goal met':'Under goal'):'No data'}</span></div>
+    <div class="dd-row"><span class="muted">Worn</span><b class="num">${fmtHM(wear)}</b></div>
+    <div class="dd-row"><span class="muted">Out of mouth</span><b class="num">${fmtHM(out)}</b></div>
+    <div class="dd-row"><span class="muted">Goal</span><span class="num">${settings.goalHours}h</span></div>
+    ${isFuture?'':`<button class="linkbtn" id="editDayBtn" style="margin-top:8px">Fix this day's time-out</button>`}`;
+  const eb=document.getElementById('editDayBtn'); if(eb) eb.onclick=()=>editDay(k);
+}
+
+function renderTrays(){
+  const {trayCount,trayDays,curTray,trayStart}=settings;
+  const start=new Date(trayStart+'T00:00');
+  const dayOn=Math.floor((startOfDay(new Date())-start)/86400e3)+1;
+  const clampedDay=Math.min(Math.max(dayOn,1),trayDays);
+  document.getElementById('curTrayTitle').textContent=`Tray ${curTray}`;
+  const overall=Math.min(100,Math.round(((curTray-1)*trayDays+clampedDay)/(trayCount*trayDays)*100));
+  document.getElementById('overallPct').textContent=overall+'%';
+  document.getElementById('overallBar').style.width=overall+'%';
+  document.getElementById('trayDayTxt').textContent=`Day ${clampedDay} of ${trayDays}`;
+  document.getElementById('trayBar').style.width=Math.min(100,clampedDay/trayDays*100)+'%';
+
+  const switchDate=addDays(start,trayDays);
+  const daysLeft=Math.ceil((startOfDay(switchDate)-startOfDay(new Date()))/86400e3);
+  document.getElementById('switchWhen').textContent=
+    'Switch on '+switchDate.toLocaleDateString(undefined,{month:'long',day:'numeric'});
+  document.getElementById('switchRel').textContent=
+    daysLeft>1?`in ${daysLeft} days`:daysLeft===1?'tomorrow':daysLeft===0?'today — recommended':`${-daysLeft} day(s) overdue`;
+  const nextTray=Math.min(curTray+1,trayCount);
+  const last=curTray>=trayCount;
+  document.getElementById('switchBtnTxt').textContent=last?'Finish treatment 🎉':`Switch to Tray ${nextTray} now`;
+
+  const list=document.getElementById('trayList');list.innerHTML='';
+  for(let t=1;t<=trayCount;t++){
+    const ts=addDays(start,(t-curTray)*trayDays);
+    const cls=t<curTray?'done':t===curTray?'cur':'';
+    const label=t<curTray?'done':t===curTray?'current':ts.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    list.insertAdjacentHTML('beforeend',
+      `<div class="trayrow ${cls}"><div class="traynum">${t}</div><div>Tray ${t}<div class="muted" style="font-size:12px">${trayDays} days</div></div><div class="meta">${label}</div></div>`);
+  }
+}
+
+function fillSettings(){
+  if(document.activeElement && document.activeElement.tagName==='INPUT') return;
+  sGoal.value=settings.goalHours; sTrayCount.value=settings.trayCount;
+  sTrayDays.value=settings.trayDays; sCurTray.value=settings.curTray; sTrayStart.value=settings.trayStart;
+}
+
+/* ============================================================
+   6. WIRING
+   ============================================================ */
+document.getElementById('toggleBtn').onclick=toggleWear;
+document.getElementById('switchNow').onclick=()=>switchTray(true);
+document.getElementById('trayDelay').onclick=()=>switchTray(false);
+document.getElementById('prevMonth').onclick=()=>{calMonth=startOfMonth(addDays(calMonth,-1));selectedDay=null;document.getElementById('dayDetail').classList.remove('show');renderCalendar();};
+document.getElementById('nextMonth').onclick=()=>{calMonth=startOfMonth(addDays(calMonth,32));selectedDay=null;document.getElementById('dayDetail').classList.remove('show');renderCalendar();};
+
+document.getElementById('saveSettings').onclick=()=>{
+  backend.saveSettings({
+    goalHours:Math.min(24,Math.max(1,parseFloat(sGoal.value)||22)),
+    trayCount:Math.max(1,parseInt(sTrayCount.value)||10),
+    trayDays:Math.max(1,parseInt(sTrayDays.value)||14),
+    curTray:Math.max(1,parseInt(sCurTray.value)||1),
+    trayStart:sTrayStart.value||todayKey()
+  });
+  document.getElementById('saveSettings').textContent='Saved ✓';
+  setTimeout(()=>document.getElementById('saveSettings').textContent='Save settings',1200);
+};
+document.getElementById('resetBtn').onclick=()=>{ if(confirm('Erase ALL tracking data? This cannot be undone.')) backend.wipe(); };
+document.getElementById('logoutBtn').onclick=async()=>{
+  if(fb){ started=false; try{ await fb.authMod.signOut(fb.auth); }catch(e){} showLogin(); }
+  else alert('You are in local mode — nothing to log out of.');
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify({settings,openOut,days},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clearwear-data.json';a.click();
+};
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('page-'+t.dataset.tab).classList.add('active');
+});
+
+setInterval(()=>{ if(document.getElementById('page-today').classList.contains('active')){renderToday();renderWeek();} },1000);
+
+boot();
+</script>
+</body>
+</html>
