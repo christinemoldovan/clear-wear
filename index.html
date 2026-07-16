@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#0EA968" />
-<title>Aligner Tracker</title>
+<title>ClearWear · Aligner Tracker</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClearWear">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -17,7 +24,7 @@
     --r:22px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0}
+  html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%;touch-action:manipulation}
   body{
     font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
     min-height:100dvh;-webkit-font-smoothing:antialiased;
@@ -109,6 +116,11 @@
   .cell.future{color:#c2cdc7;background:transparent}
   .cell.today{box-shadow:inset 0 0 0 2px var(--amber)}
   .cell.sel{transform:scale(1.06)}
+  .cell{position:relative}
+  .cell .swdot{position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;
+    background:var(--ink);color:#fff;font-size:9px;font-weight:700;line-height:15px;text-align:center;
+    box-shadow:0 0 0 1.5px var(--surface)}
+  .cell.good .swdot,.cell.under .swdot{background:#fff;color:var(--ink);box-shadow:none}
   .legend{display:flex;gap:16px;margin-top:16px;font-size:12px;color:var(--muted)}
   .legend span{display:flex;align-items:center;gap:6px}
   .sw{width:12px;height:12px;border-radius:4px}
@@ -138,8 +150,8 @@
   .field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
   .field .sub{font-weight:400;color:var(--muted);font-size:12px}
   .field input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:var(--bg)}
-  .field input[type="date"]{text-align:left;-webkit-appearance:none;appearance:none}
-  .field input[type="date"]::-webkit-date-and-time-value{text-align:left}
+  .field input[type="date"],.field input[type="time"],.field input[type="datetime-local"]{text-align:left;-webkit-appearance:none;appearance:none;color:var(--ink)}
+  .field input[type="date"]::-webkit-date-and-time-value,.field input[type="time"]::-webkit-date-and-time-value,.field input[type="datetime-local"]::-webkit-date-and-time-value{text-align:left}
   .field input:focus{outline:none;border-color:var(--green);background:#fff}
   .danger{color:var(--red);font-weight:600;font-size:14px;background:var(--red-soft);border-radius:12px;padding:13px;width:100%;margin-top:8px}
 
@@ -172,6 +184,13 @@
     font-weight:600;font-size:16px;margin-top:6px}
   .login-card button:disabled{opacity:.6}
   .login-err{color:var(--red);font-size:13px;font-weight:500;margin:12px 0 0;min-height:16px}
+
+  .field label.switchrow{display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;font-weight:600;font-size:13px;margin:0}
+  .field label.switchrow > span{min-width:0}
+  .field .switchrow input{appearance:none;-webkit-appearance:none;width:46px;height:28px;min-width:46px;border-radius:99px;background:var(--line);position:relative;transition:background .2s;flex:none;cursor:pointer;padding:0;margin:0}
+  .field .switchrow input:checked{background:var(--green)}
+  .field .switchrow input::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .field .switchrow input:checked::after{transform:translateX(18px)}
 </style>
 </head>
 <body>
@@ -237,6 +256,21 @@
       </div>
     </div>
 
+    <div class="card" id="trayMiniCard" style="padding:16px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div class="eyebrow">Current tray</div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;margin-top:3px" id="miniTrayTitle">Tray 1 of 10</div>
+          <div class="muted" style="font-size:13px" id="miniTrayDay">Day 1 of 14</div>
+        </div>
+        <div style="text-align:right">
+          <div class="num" id="miniSwitch" style="font-weight:700;font-size:15px">—</div>
+          <button class="linkbtn" id="miniTrayLink" style="font-size:13px;margin-top:4px">Tray details ›</button>
+        </div>
+      </div>
+      <div id="miniSwitchBanner" style="display:none;margin-top:14px"></div>
+    </div>
+
     <div class="card">
       <div class="eyebrow">This week</div>
       <div class="week" id="weekDots" style="margin-top:12px"></div>
@@ -257,6 +291,7 @@
         <span><i class="sw" style="background:var(--green)"></i>Goal met</span>
         <span><i class="sw" style="background:var(--amber)"></i>Under goal</span>
         <span><i class="sw" style="background:var(--bg)"></i>No data</span>
+        <span><i class="sw" style="background:var(--ink);border-radius:50%"></i>Tray switch</span>
       </div>
       <div id="dayDetail"></div>
     </div>
@@ -265,13 +300,20 @@
   <!-- TRAYS -->
   <section class="page" id="page-trays">
     <div class="card" id="curTrayCard">
-      <div class="eyebrow">Current tray</div>
-      <h2 style="font-size:30px;margin:6px 0 14px" id="curTrayTitle">Tray 1</h2>
-
-      <div class="tray-prog">
-        <div class="lab"><span>Treatment progress</span><b id="overallPct">0%</b></div>
-        <div class="bar"><i id="overallBar" style="width:0%;background:var(--green)"></i></div>
+      <div class="eyebrow">Treatment progress</div>
+      <div style="position:relative;width:184px;height:184px;margin:14px auto 4px">
+        <svg width="184" height="184" viewBox="0 0 184 184" style="transform:rotate(-90deg)">
+          <circle cx="92" cy="92" r="80" fill="none" stroke="var(--line)" stroke-width="14"/>
+          <circle id="overallRing" cx="92" cy="92" r="80" fill="none" stroke="var(--green)" stroke-width="14"
+            stroke-linecap="round" stroke-dasharray="502.65" stroke-dashoffset="502.65" style="transition:stroke-dashoffset .6s ease"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div class="num" id="overallPct" style="font-size:36px;font-weight:700">0%</div>
+          <div class="muted" style="font-size:12px">complete</div>
+        </div>
       </div>
+      <h2 style="font-size:24px;margin:4px 0 16px;text-align:center" id="curTrayTitle">Tray 1</h2>
+
       <div class="tray-prog">
         <div class="lab"><span>Days on this tray</span><b id="trayDayTxt">Day 1 of 14</b></div>
         <div class="bar"><i id="trayBar" style="width:0%;background:var(--green)"></i></div>
@@ -314,10 +356,37 @@
         <input type="number" id="sCurTray" min="1" step="1">
       </div>
       <div class="field">
-        <label>This tray started on</label>
-        <input type="date" id="sTrayStart">
+        <label>This tray started on <span class="sub">exact date &amp; time</span></label>
+        <input type="datetime-local" id="sTrayStart">
+      </div>
+      <div class="field">
+        <label class="switchrow"><span>Auto-advance trays <span class="sub">bump the tray number on the switch date</span></span>
+          <input type="checkbox" id="sAutoAdvance"></label>
       </div>
       <button class="btn-primary" id="saveSettings">Save settings</button>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Reminders & notifications</div>
+      <p class="muted" style="font-size:13px;line-height:1.5;margin:12px 0 14px">
+        On iPhone, add this site to your Home Screen first (Share → Add to Home Screen), then open it from that icon — notifications only work from the installed app.
+      </p>
+      <div id="notifStatus" style="font-size:13px;font-weight:600;margin-bottom:16px;color:var(--muted)">Checking…</div>
+      <div class="field">
+        <label>Alert if aligners are left out longer than <span class="sub">minutes — repeats at each interval</span></label>
+        <input type="number" id="sOutThreshold" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>Morning reminder <span class="sub">tray-switch heads-up &amp; put-in nudge</span></label>
+        <input type="time" id="sMorningTime">
+      </div>
+      <div class="field">
+        <label>Evening check-in <span class="sub">how you're doing on today's goal</span></label>
+        <input type="time" id="sEveningTime">
+      </div>
+      <button class="btn-primary" id="saveReminders">Save reminder settings</button>
+      <button class="btn-primary" id="notifEnableBtn" style="margin-top:10px">Enable notifications</button>
+      <button class="btn-ghost" id="notifDisableBtn">Turn off notifications</button>
     </div>
 
     <div class="card">
@@ -364,7 +433,7 @@
    - days:     { 'YYYY-MM-DD': { outMs, sessions } }
    Wear for a day = (elapsed in day) - (out ms that day).
    ============================================================ */
-const DEFAULTS = { goalHours:22, trayCount:10, trayDays:14, curTray:1, trayStart:isoDate(new Date()) };
+const DEFAULTS = { goalHours:22, trayCount:10, trayDays:14, curTray:1, trayStart:localISO(new Date()), autoAdvance:false, outThreshold:15, morningTime:'08:00', eveningTime:'20:00' };
 let settings = {...DEFAULTS};
 let openOut = null;
 let days = {};
@@ -373,6 +442,8 @@ let selectedDay = null;
 
 /* ---------- date helpers (all local time) ---------- */
 function isoDate(d){const z=new Date(d);return z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')+'-'+String(z.getDate()).padStart(2,'0');}
+function localISO(d){const z=new Date(d);const p=n=>String(n).padStart(2,'0');return `${z.getFullYear()}-${p(z.getMonth()+1)}-${p(z.getDate())}T${p(z.getHours())}:${p(z.getMinutes())}`;}
+function trayStartDate(){const s=settings.trayStart||'';const d=new Date(s.length<=10?s+'T00:00':s);return isNaN(d)?new Date():d;}
 function startOfDay(d){const z=new Date(d);z.setHours(0,0,0,0);return z;}
 function startOfMonth(d){const z=new Date(d);z.setDate(1);z.setHours(0,0,0,0);return z;}
 function addDays(d,n){const z=new Date(d);z.setDate(z.getDate()+n);return z;}
@@ -507,6 +578,7 @@ async function boot(){
     backend=localBackend();
     document.getElementById('cloudTxt').textContent='local';
     backend.start(render); render();
+    initNotifications(); startTick();
     return;
   }
   try{ await loadFirebase(); }
@@ -521,6 +593,7 @@ async function boot(){
       document.getElementById('cloudDot').classList.add('on');
       document.getElementById('cloudTxt').textContent='synced';
       backend.start(render); render();
+      initNotifications(); startTick();
     }else{
       showLogin();
     }
@@ -557,8 +630,16 @@ function toggleWear(){
 
 function switchTray(advance){
   const s={...settings};
-  if(advance && s.curTray<s.trayCount) s.curTray++;
-  s.trayStart=todayKey();
+  if(advance){
+    if(s.curTray<s.trayCount){
+      s.curTray++; s.trayStart=localISO(new Date());
+    }else{
+      if(!confirm('Finished this set of aligners?\n\nStart a new set from Tray 1 (e.g. refinements)? If the new set has a different number of trays, update "Number of trays" in Settings afterwards.')) return;
+      s.curTray=1; s.trayStart=localISO(new Date());
+    }
+  }else{
+    s.trayStart=localISO(new Date());
+  }
   backend.saveSettings(s);
 }
 
@@ -576,9 +657,38 @@ function editDay(key){
 const C=653.45; // 2*pi*104
 
 function render(){
+  maybeAutoAdvance();
   document.getElementById('todayDate').textContent =
     new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
-  renderToday(); renderWeek(); renderCalendar(); renderTrays(); fillSettings();
+  renderToday(); renderTodayTray(); renderWeek(); renderCalendar(); renderTrays(); fillSettings();
+}
+
+function renderTodayTray(){
+  const {trayCount,trayDays,curTray}=settings;
+  const start=trayStartDate();
+  const dayOn=Math.min(Math.max(Math.floor((startOfDay(new Date())-startOfDay(start))/86400e3)+1,1),trayDays);
+  const sd=addDays(start,trayDays);
+  const daysLeft=Math.ceil((startOfDay(sd)-startOfDay(new Date()))/86400e3);
+  document.getElementById('miniTrayTitle').textContent=`Tray ${curTray} of ${trayCount}`;
+  document.getElementById('miniTrayDay').textContent=`Day ${dayOn} of ${trayDays}`;
+  const ms=document.getElementById('miniSwitch');
+  ms.textContent = daysLeft>1?`${daysLeft} days left` : daysLeft===1?'Switch tomorrow' : daysLeft===0?'Switch today' : `${-daysLeft} day${-daysLeft>1?'s':''} over`;
+  ms.style.color = daysLeft<=0 ? 'var(--amber)' : 'var(--green-deep)';
+
+  const banner=document.getElementById('miniSwitchBanner');
+  if(daysLeft<=0){
+    const next=Math.min(curTray+1,trayCount);
+    const last=curTray>=trayCount;
+    const msg=last ? "You've reached your last tray."
+                   : `Recommended: move to Tray ${next}${daysLeft<0?` — ${-daysLeft} day${-daysLeft>1?'s':''} overdue`:' today'}.`;
+    const btn=last ? 'Finish & start new set 🔄' : `Switch to Tray ${next} now`;
+    banner.style.display='';
+    banner.innerHTML=`<div class="hint" style="margin-top:0"><span>${msg}</span></div>`+
+      `<button class="btn-primary" id="miniSwitchBtn" style="margin-top:10px">${btn}</button>`;
+    document.getElementById('miniSwitchBtn').onclick=()=>switchTray(true);
+  }else{
+    banner.style.display='none'; banner.innerHTML='';
+  }
 }
 
 function renderToday(){
@@ -636,6 +746,19 @@ function renderWeek(){
   }
 }
 
+/* Map of YYYY-MM-DD → tray number that starts that day.
+   Projects backwards for earlier trays and forwards to the last tray. */
+function switchMap(){
+  const m={};
+  const start=startOfDay(trayStartDate());
+  const {curTray,trayCount,trayDays}=settings;
+  for(let t=1;t<=trayCount;t++){
+    const d=addDays(start,(t-curTray)*trayDays);
+    m[isoDate(d)]=t;
+  }
+  return m;
+}
+
 function renderCalendar(){
   const head=document.getElementById('calHead');
   if(!head.children.length) ['S','M','T','W','T','F','S'].forEach(x=>head.insertAdjacentHTML('beforeend',`<div class="dow">${x}</div>`));
@@ -645,7 +768,7 @@ function renderCalendar(){
   const first=startOfMonth(calMonth), pad=first.getDay();
   const dim=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,0).getDate();
   for(let i=0;i<pad;i++)grid.insertAdjacentHTML('beforeend','<div class="cell empty"></div>');
-  const tk=todayKey();
+  const tk=todayKey(), sw=switchMap();
   for(let day=1;day<=dim;day++){
     const d=new Date(calMonth.getFullYear(),calMonth.getMonth(),day), k=isoDate(d);
     let cls='cell';
@@ -653,7 +776,8 @@ function renderCalendar(){
     else if(k===tk) cls+=(wearForDay(k,true)>=goalMs()?' good':(days[k]||openOut?' under':''))+' today';
     else cls+=' '+ (dayStatus(k)==='good'?'good':dayStatus(k)==='under'?'under':'');
     if(k===selectedDay) cls+=' sel';
-    grid.insertAdjacentHTML('beforeend',`<button class="${cls}" data-k="${k}">${day}</button>`);
+    const badge = sw[k] ? `<span class="swdot" title="Start of Tray ${sw[k]}">${sw[k]}</span>` : '';
+    grid.insertAdjacentHTML('beforeend',`<button class="${cls}" data-k="${k}">${day}${badge}</button>`);
   }
   grid.querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>showDay(b.dataset.k));
 }
@@ -662,29 +786,39 @@ function showDay(k){
   selectedDay=k;renderCalendar();
   const det=document.getElementById('dayDetail');
   const isT=k===todayKey(), isFuture=k>todayKey();
-  if(isFuture){det.className='';det.classList.remove('show');return;}
+  const sw=switchMap()[k];
+  const swLine = sw ? `<div class="dd-row"><span class="muted">Tray schedule</span><b style="color:var(--green-deep)">Start of Tray ${sw}</b></div>` : '';
+  const dateLine = `<div class="dd-row"><b>${new Date(k+'T00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</b>`;
+
+  if(isFuture){
+    if(!sw){ det.classList.remove('show'); return; }
+    det.classList.add('show');
+    det.innerHTML = dateLine + `<span class="muted">Upcoming</span></div>` + swLine;
+    return;
+  }
+
   const wear=wearForDay(k,isT), out=outForDay(k), met=wear>=goalMs();
   const tracked=!!days[k]||(isT&&(openOut||out>0));
   det.classList.add('show');
-  det.innerHTML=`
-    <div class="dd-row"><b>${new Date(k+'T00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</b>
-      <span style="color:${met?'var(--green-deep)':'var(--amber)'}">${tracked?(met?'Goal met':'Under goal'):'No data'}</span></div>
+  det.innerHTML=
+    dateLine + `<span style="color:${met?'var(--green-deep)':'var(--amber)'}">${tracked?(met?'Goal met':'Under goal'):'No data'}</span></div>` +
+    swLine + `
     <div class="dd-row"><span class="muted">Worn</span><b class="num">${fmtHM(wear)}</b></div>
     <div class="dd-row"><span class="muted">Out of mouth</span><b class="num">${fmtHM(out)}</b></div>
     <div class="dd-row"><span class="muted">Goal</span><span class="num">${settings.goalHours}h</span></div>
-    ${isFuture?'':`<button class="linkbtn" id="editDayBtn" style="margin-top:8px">Fix this day's time-out</button>`}`;
+    <button class="linkbtn" id="editDayBtn" style="margin-top:8px">Fix this day's time-out</button>`;
   const eb=document.getElementById('editDayBtn'); if(eb) eb.onclick=()=>editDay(k);
 }
 
 function renderTrays(){
-  const {trayCount,trayDays,curTray,trayStart}=settings;
-  const start=new Date(trayStart+'T00:00');
-  const dayOn=Math.floor((startOfDay(new Date())-start)/86400e3)+1;
+  const {trayCount,trayDays,curTray}=settings;
+  const start=trayStartDate();
+  const dayOn=Math.floor((startOfDay(new Date())-startOfDay(start))/86400e3)+1;
   const clampedDay=Math.min(Math.max(dayOn,1),trayDays);
-  document.getElementById('curTrayTitle').textContent=`Tray ${curTray}`;
+  document.getElementById('curTrayTitle').textContent=`Tray ${curTray} of ${trayCount}`;
   const overall=Math.min(100,Math.round(((curTray-1)*trayDays+clampedDay)/(trayCount*trayDays)*100));
   document.getElementById('overallPct').textContent=overall+'%';
-  document.getElementById('overallBar').style.width=overall+'%';
+  document.getElementById('overallRing').style.strokeDashoffset=502.65*(1-overall/100);
   document.getElementById('trayDayTxt').textContent=`Day ${clampedDay} of ${trayDays}`;
   document.getElementById('trayBar').style.width=Math.min(100,clampedDay/trayDays*100)+'%';
 
@@ -696,7 +830,7 @@ function renderTrays(){
     daysLeft>1?`in ${daysLeft} days`:daysLeft===1?'tomorrow':daysLeft===0?'today — recommended':`${-daysLeft} day(s) overdue`;
   const nextTray=Math.min(curTray+1,trayCount);
   const last=curTray>=trayCount;
-  document.getElementById('switchBtnTxt').textContent=last?'Finish treatment 🎉':`Switch to Tray ${nextTray} now`;
+  document.getElementById('switchBtnTxt').textContent=last?'Finish & start new set 🔄':`Switch to Tray ${nextTray} now`;
 
   const list=document.getElementById('trayList');list.innerHTML='';
   for(let t=1;t<=trayCount;t++){
@@ -711,28 +845,44 @@ function renderTrays(){
 function fillSettings(){
   if(document.activeElement && document.activeElement.tagName==='INPUT') return;
   sGoal.value=settings.goalHours; sTrayCount.value=settings.trayCount;
-  sTrayDays.value=settings.trayDays; sCurTray.value=settings.curTray; sTrayStart.value=settings.trayStart;
+  sTrayDays.value=settings.trayDays; sCurTray.value=settings.curTray;
+  sTrayStart.value = settings.trayStart ? (settings.trayStart.length>10 ? settings.trayStart : settings.trayStart+'T00:00') : localISO(new Date());
+  const aa=document.getElementById('sAutoAdvance'); if(aa) aa.checked=!!settings.autoAdvance;
+  const ot=document.getElementById('sOutThreshold'); if(ot) ot.value=settings.outThreshold??15;
+  const mt=document.getElementById('sMorningTime'); if(mt) mt.value=settings.morningTime||'08:00';
+  const et=document.getElementById('sEveningTime'); if(et) et.value=settings.eveningTime||'20:00';
 }
 
 /* ============================================================
    6. WIRING
    ============================================================ */
 document.getElementById('toggleBtn').onclick=toggleWear;
+document.getElementById('miniTrayLink').onclick=()=>document.querySelector('.tab[data-tab="trays"]').click();
 document.getElementById('switchNow').onclick=()=>switchTray(true);
 document.getElementById('trayDelay').onclick=()=>switchTray(false);
 document.getElementById('prevMonth').onclick=()=>{calMonth=startOfMonth(addDays(calMonth,-1));selectedDay=null;document.getElementById('dayDetail').classList.remove('show');renderCalendar();};
 document.getElementById('nextMonth').onclick=()=>{calMonth=startOfMonth(addDays(calMonth,32));selectedDay=null;document.getElementById('dayDetail').classList.remove('show');renderCalendar();};
 
 document.getElementById('saveSettings').onclick=()=>{
-  backend.saveSettings({
+  backend.saveSettings({...settings,
     goalHours:Math.min(24,Math.max(1,parseFloat(sGoal.value)||22)),
     trayCount:Math.max(1,parseInt(sTrayCount.value)||10),
     trayDays:Math.max(1,parseInt(sTrayDays.value)||14),
     curTray:Math.max(1,parseInt(sCurTray.value)||1),
-    trayStart:sTrayStart.value||todayKey()
+    trayStart:sTrayStart.value||localISO(new Date()),
+    autoAdvance:document.getElementById('sAutoAdvance').checked
   });
   document.getElementById('saveSettings').textContent='Saved ✓';
   setTimeout(()=>document.getElementById('saveSettings').textContent='Save settings',1200);
+};
+document.getElementById('saveReminders').onclick=()=>{
+  backend.saveSettings({...settings,
+    outThreshold:Math.max(1,parseInt(document.getElementById('sOutThreshold').value)||15),
+    morningTime:document.getElementById('sMorningTime').value||'08:00',
+    eveningTime:document.getElementById('sEveningTime').value||'20:00'
+  });
+  const b=document.getElementById('saveReminders');
+  b.textContent='Saved ✓'; setTimeout(()=>b.textContent='Save reminder settings',1200);
 };
 document.getElementById('resetBtn').onclick=()=>{ if(confirm('Erase ALL tracking data? This cannot be undone.')) backend.wipe(); };
 document.getElementById('logoutBtn').onclick=async()=>{
@@ -751,9 +901,142 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.getElementById('page-'+t.dataset.tab).classList.add('active');
 });
 
-setInterval(()=>{ if(document.getElementById('page-today').classList.contains('active')){renderToday();renderWeek();} },1000);
+setInterval(()=>{ if(document.getElementById('page-today').classList.contains('active')){renderToday();renderTodayTray();renderWeek();} },1000);
+
+/* ============================================================
+   NOTIFICATIONS + AUTO-ADVANCE
+   Device flag + last-fired markers live in localStorage.
+   Times/thresholds/auto-advance live in synced settings.
+   ============================================================ */
+const NOTIF_KEY='clearwear_notif';
+let swReg=null, _tickStarted=false, _notifInit=false, _advancing=false;
+function notifPrefs(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY))||{}; }catch{ return {}; } }
+function saveNotifPrefs(p){ try{ localStorage.setItem(NOTIF_KEY,JSON.stringify(p)); }catch{} }
+
+async function registerSW(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{ swReg=await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready; }
+  catch(e){ console.warn('SW register failed',e); }
+  return swReg;
+}
+async function localNotif(title,body){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const opts={body,icon:'apple-touch-icon.png',badge:'favicon.png',tag:'clearwear',renotify:true};
+  try{
+    if(swReg && swReg.showNotification) await swReg.showNotification(title,opts);
+    else new Notification(title,opts);
+  }catch(e){ try{ new Notification(title,{body}); }catch(_){} }
+}
+
+/* Auto-advance the tray number once the switch date passes (catches up if
+   the app wasn't opened for a few days). Runs regardless of notifications. */
+function maybeAutoAdvance(){
+  if(_advancing || !settings.autoAdvance || !backend) return;
+  let curTray=settings.curTray, startD=trayStartDate(), changed=false, guard=0;
+  while(guard++<60){
+    const sd=addDays(startD, settings.trayDays);
+    const daysLeft=Math.ceil((startOfDay(sd)-startOfDay(new Date()))/86400e3);
+    if(daysLeft<=0 && curTray<settings.trayCount){ curTray++; startD=sd; changed=true; }
+    else break;
+  }
+  if(changed){
+    _advancing=true;
+    backend.saveSettings({...settings, curTray, trayStart:localISO(startD)});
+    _advancing=false;
+    localNotif('🔄 Moved to Tray '+curTray, `Auto-advanced on schedule — you're now on Tray ${curTray} of ${settings.trayCount}.`);
+  }
+}
+
+function checkAlarms(){
+  const p=notifPrefs();
+  if(!p.enabled) return;
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const hm=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const today=isoDate(now);
+
+  // Aligners out too long — fires at the threshold, then again each interval
+  if(openOut){
+    const thr=Math.max(1,parseInt(settings.outThreshold)||15);
+    const outMin=(Date.now()-openOut)/60000;
+    const mult=Math.floor(outMin/thr);
+    const key=String(openOut);
+    if(mult>=1 && (p.outSession!==key || (p.outMult||0)<mult)){
+      localNotif('😬 Aligners are out', `Out for ${Math.round(outMin)} min — put them back in to protect your ${settings.goalHours}h goal.`);
+      saveNotifPrefs({...notifPrefs(), outSession:key, outMult:mult});
+    }
+  }else if(p.outSession){ saveNotifPrefs({...p, outSession:null, outMult:0}); }
+
+  // Morning: tray heads-up or a put-in nudge
+  if(settings.morningTime && hm===settings.morningTime && p.lastMorning!==today){
+    const sd=addDays(trayStartDate(), settings.trayDays);
+    const daysLeft=Math.ceil((startOfDay(sd)-startOfDay(now))/86400e3);
+    const next=Math.min(settings.curTray+1, settings.trayCount);
+    if(settings.curTray<settings.trayCount && daysLeft===1){
+      localNotif('📅 Tray switch tomorrow', `Tomorrow you move to Tray ${next}. Almost there!`);
+    }else if(settings.curTray<settings.trayCount && daysLeft<=0){
+      const od = daysLeft<0 ? ` (${-daysLeft} day${-daysLeft>1?'s':''} overdue)` : '';
+      localNotif('🔄 Switch trays today', `Time to move to Tray ${next}${od}. Open the app to confirm.`);
+    }else if(settings.curTray>=settings.trayCount && daysLeft<=0){
+      localNotif('🎉 Final tray complete', 'You may be at the end of treatment — check with your provider.');
+    }else{
+      localNotif('🦷 Good morning', 'Pop your aligners in to start the day right.');
+    }
+    saveNotifPrefs({...notifPrefs(), lastMorning:today});
+  }
+
+  // Evening: goal progress
+  if(settings.eveningTime && hm===settings.eveningTime && p.lastEvening!==today){
+    const wear=wearForDay(today,true), goal=goalMs();
+    if(wear<goal) localNotif('⏰ Aligner check-in', `You still need ${fmtHM(goal-wear)} of wear today. Keep them in!`);
+    else localNotif('✅ Goal met!', `You've hit your ${settings.goalHours}h goal today. Nice work!`);
+    saveNotifPrefs({...notifPrefs(), lastEvening:today});
+  }
+}
+
+function tick(){ try{ maybeAutoAdvance(); checkAlarms(); }catch(e){ console.warn(e); } }
+function startTick(){ if(_tickStarted) return; _tickStarted=true; tick(); setInterval(tick,60000); }
+
+async function initNotifications(){
+  if(_notifInit) return; _notifInit=true;
+  const statusEl=document.getElementById('notifStatus');
+  const enableBtn=document.getElementById('notifEnableBtn');
+  const disableBtn=document.getElementById('notifDisableBtn');
+  if(!('Notification' in window)){
+    statusEl.textContent='⚠️ This browser does not support notifications.';
+    enableBtn.style.display='none'; disableBtn.style.display='none'; return;
+  }
+  function ui(){
+    const perm=Notification.permission, en=!!notifPrefs().enabled;
+    if(perm==='denied'){
+      statusEl.textContent='🚫 Notifications are blocked in your browser/app settings.';
+      statusEl.style.color='var(--red)'; enableBtn.style.display='none'; disableBtn.style.display='none';
+    }else if(perm==='granted' && en){
+      statusEl.textContent='✅ Notifications are on.';
+      statusEl.style.color='var(--green-deep)'; enableBtn.style.display='none'; disableBtn.style.display='';
+    }else{
+      statusEl.textContent='🔔 Notifications are off.';
+      statusEl.style.color='var(--muted)'; enableBtn.style.display=''; disableBtn.style.display='none';
+    }
+  }
+  enableBtn.onclick=async()=>{
+    enableBtn.disabled=true; enableBtn.textContent='Requesting…';
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm==='granted'){ await registerSW(); saveNotifPrefs({...notifPrefs(),enabled:true}); localNotif('🔔 Reminders on','Your aligner reminders are set up.'); }
+    }catch(e){}
+    enableBtn.disabled=false; enableBtn.textContent='Enable notifications'; ui();
+  };
+  disableBtn.onclick=()=>{ saveNotifPrefs({...notifPrefs(),enabled:false}); ui(); };
+  if(Notification.permission==='granted' && notifPrefs().enabled) await registerSW();
+  ui();
+}
 
 boot();
+
+/* Block pinch-zoom on iOS Safari (which ignores user-scalable=no) */
+['gesturestart','gesturechange','gestureend'].forEach(ev=>
+  document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
 </script>
 </body>
 </html>
